@@ -1,25 +1,29 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
 
+# Caminho do arquivo CSV
 csv_path = "Banco.csv"
 
+# Função para carregar os dados do CSV ou criar DataFrame vazio
 def load_data():
     if os.path.exists(csv_path):
         return pd.read_csv(csv_path, sep=";")
     else:
         return pd.DataFrame(columns=["Projeto", "Atividade", "Inicio", "Fim", "Total Dias"])
 
+# Função para salvar os dados editados no CSV
 def save_data(df):
     df.to_csv(csv_path, sep=";", index=False)
 
+# Título da página
 st.title("Gestão de Projetos - Dashboard Interativo")
 
+# Carrega os dados
 df = load_data()
 
-# Converter datas e recalcular "Total Dias"
+# Converter colunas de data e calcular total de dias
 try:
     df["Inicio"] = pd.to_datetime(df["Inicio"], dayfirst=True, errors="coerce")
     df["Fim"] = pd.to_datetime(df["Fim"], dayfirst=True, errors="coerce")
@@ -27,22 +31,19 @@ try:
 except Exception as e:
     st.error(f"Erro ao converter datas: {e}")
 
+# Editor interativo de dados
 st.subheader("📋 Edição dos Dados")
 edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
 
 # Botão para salvar alterações
 if st.button("Salvar Alterações"):
-    save_data(edited_df)
+    df_to_save = edited_df.copy()
+    df_to_save["Inicio"] = pd.to_datetime(df_to_save["Inicio"], errors="coerce").dt.strftime("%d/%m/%Y")
+    df_to_save["Fim"] = pd.to_datetime(df_to_save["Fim"], errors="coerce").dt.strftime("%d/%m/%Y")
+    save_data(df_to_save)
     st.success("Dados salvos com sucesso!")
 
-# Deletar linha por índice
-if not edited_df.empty:
-    index_to_delete = st.number_input("Índice da linha para deletar:", min_value=0, max_value=len(edited_df)-1, step=1)
-    if st.button("Deletar linha"):
-        edited_df = edited_df.drop(index=index_to_delete).reset_index(drop=True)
-        save_data(edited_df)
-        st.success("Linha deletada e dados atualizados.")
-
+# Gráfico empilhado por atividade
 st.subheader("📊 Gráfico de Coluna Empilhada")
 if not edited_df.empty:
     try:
@@ -53,3 +54,4 @@ if not edited_df.empty:
         st.error(f"Erro ao gerar gráfico: {e}")
 else:
     st.warning("Nenhum dado disponível.")
+
